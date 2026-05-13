@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Rate limiting
 const rateLimit = require('express-rate-limit');
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 100, validate: { xForwardedForHeader: false } });
 app.use('/api/', limiter);
 
 // Public site info (no auth required)
