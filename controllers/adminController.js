@@ -154,6 +154,38 @@ exports.getPriceList = async (req, res) => {
   }
 };
 
+// === Account Management ===
+exports.changeAccount = (req, res) => {
+  try {
+    const { newUsername, newPassword, currentPassword } = req.body;
+    const admin = db.prepare('SELECT * FROM users WHERE id = ? AND role = ?').get(req.user.id, 'admin');
+    if (!admin) return res.json({ code: 403, msg: '无权限' });
+
+    const bcrypt = require('bcryptjs');
+
+    // Require current password to change credentials
+    if (!currentPassword) return res.json({ code: 400, msg: '请输入当前密码' });
+    if (!bcrypt.compareSync(currentPassword, admin.password)) return res.json({ code: 400, msg: '当前密码错误' });
+
+    if (newUsername && newUsername !== admin.username) {
+      if (newUsername.length < 3 || newUsername.length > 20) return res.json({ code: 400, msg: '用户名长度3-20位' });
+      const existing = User.findByUsername(newUsername);
+      if (existing && existing.id !== admin.id) return res.json({ code: 400, msg: '用户名已存在' });
+      db.prepare('UPDATE users SET username = ? WHERE id = ?').run(newUsername, req.user.id);
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 6) return res.json({ code: 400, msg: '密码至少6位' });
+      const hash = bcrypt.hashSync(newPassword, 10);
+      db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, req.user.id);
+    }
+
+    res.json({ code: 0, msg: '账号信息更新成功' });
+  } catch (e) {
+    res.json({ code: 500, msg: '服务器错误: ' + e.message });
+  }
+};
+
 // === System Config ===
 exports.getConfig = (req, res) => {
   const configs = db.prepare('SELECT * FROM system_config').all();

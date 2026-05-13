@@ -28,11 +28,7 @@ exports.acquireNumber = async (req, res) => {
       return res.json({ code: 400, msg: '该服务需要指定号码或号段才能取号' });
     }
 
-    // Deduct balance
-    if (!User.deductBalance(req.user.id, service.price)) {
-      return res.json({ code: 400, msg: '扣费失败' });
-    }
-
+    // Balance will be deducted when SMS code arrives, not at number acquisition
     // Create local order
     const orderId = Order.create(req.user.id, service.id, service.price);
 
@@ -61,8 +57,6 @@ exports.acquireNumber = async (req, res) => {
           }
         });
       } else {
-        // Refund
-        User.updateBalance(req.user.id, service.price);
         Order.updateStatus(orderId, 'failed');
         const errMap = {
           '-1': '暂时无号',
@@ -74,7 +68,6 @@ exports.acquireNumber = async (req, res) => {
         res.json({ code: 500, msg });
       }
     } catch (apiErr) {
-      User.updateBalance(req.user.id, service.price);
       Order.updateStatus(orderId, 'failed');
       res.json({ code: 500, msg: 'Firefox API 请求失败: ' + apiErr.message });
     }
@@ -98,6 +91,10 @@ exports.getSmsCode = async (req, res) => {
     try {
       const result = await firefoxApi.getSmsCode(order.firefox_order_id); // firefox_order_id stores pkey
       if (result.success && result.code) {
+        // Deduct balance only when SMS code actually arrives
+        if (!User.deductBalance(req.user.id, order.amount)) {
+          return res.json({ code: 400, msg: '扣费失败，余额不足' });
+        }
         Order.updateSmsCode(orderId, result.code, result.fullSms);
         res.json({ code: 0, msg: '获取验证码成功', data: { smsCode: result.code, fullSms: result.fullSms } });
       } else {

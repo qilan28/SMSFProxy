@@ -58,7 +58,10 @@
         <button class="btn btn-primary" onclick="generateCards()">生成卡密</button>
       </div>
       <div class="key-display" id="keyDisplay">
-        <div style="margin-bottom:8px;font-size:13px;color:#888;">点击卡密可复制，<strong>请立即保存</strong></div>
+        <div style="margin-bottom:8px;font-size:13px;color:#888;display:flex;justify-content:space-between;align-items:center;">
+          <span>点击卡密可复制，<strong>请立即保存</strong></span>
+          <button class="btn btn-success" style="padding:5px 12px;font-size:12px;" onclick="copyAllKeys()">一键复制全部</button>
+        </div>
         <div id="keyList"></div>
       </div>
     </div>
@@ -76,6 +79,7 @@
 
   <script>
     const API = '';
+    let lastGeneratedKeys = [];
     function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }; }
     function checkAdmin() { if (!localStorage.getItem('token')) { window.location.href = '/admin'; return false; } return true; }
     async function apiFetch(path, options = {}) {
@@ -97,6 +101,7 @@
       const data = await res.json();
       toast(data.msg, data.code === 0 ? 'success' : 'error');
       if (data.code === 0 && data.data.keys) {
+        lastGeneratedKeys = data.data.keys;
         let html = '';
         data.data.keys.forEach(k => {
           html += `<div class="key-item" onclick="copyKey('${k}')">${k}</div>`;
@@ -104,6 +109,20 @@
         document.getElementById('keyList').innerHTML = html;
         document.getElementById('keyDisplay').style.display = 'block';
         loadCards();
+      }
+    }
+
+    async function copyAllKeys() {
+      if (lastGeneratedKeys.length === 0) return toast('没有可复制的卡密', 'error');
+      const text = lastGeneratedKeys.join('\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        toast(`已复制 ${lastGeneratedKeys.length} 条卡密到剪贴板`, 'success');
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        toast(`已复制 ${lastGeneratedKeys.length} 条卡密`, 'success');
       }
     }
 

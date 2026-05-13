@@ -29,6 +29,9 @@ router.get('/orders', adminAuth, ctrl.listOrders);
 router.get('/firefox-balance', adminAuth, ctrl.checkBalance);
 router.get('/firefox-pricelist', adminAuth, ctrl.getPriceList);
 
+// Account management
+router.post('/account', adminAuth, ctrl.changeAccount);
+
 // System config
 router.get('/config', adminAuth, ctrl.getConfig);
 router.post('/config', adminAuth, ctrl.updateConfig);

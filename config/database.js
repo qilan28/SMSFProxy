@@ -99,12 +99,20 @@ function initDB() {
     db.exec('ALTER TABLE orders ADD COLUMN sms_content TEXT');
   }
 
-  // Insert default admin if not exists
+  // Insert default admin if not exists (random password printed to console)
   const bcrypt = require('bcryptjs');
   const adminUser = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
   if (!adminUser) {
-    const hash = bcrypt.hashSync('admin123', 10);
+    const crypto = require('crypto');
+    const randomPassword = crypto.randomBytes(8).toString('hex');
+    const hash = bcrypt.hashSync(randomPassword, 10);
     db.prepare('INSERT INTO users (username, password, role, balance) VALUES (?, ?, ?, ?)').run('admin', hash, 'admin', 9999);
+    console.log('========================================');
+    console.log('  Default admin account created:');
+    console.log('  Username: admin');
+    console.log('  Password: ' + randomPassword);
+    console.log('  Please change the password after login.');
+    console.log('========================================');
   }
 }
 

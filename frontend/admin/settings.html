@@ -45,6 +45,24 @@
     <h2 style="margin-bottom:20px;">网站设置</h2>
 
     <div class="section">
+      <h4>管理员账号</h4>
+      <div class="form-group">
+        <label>用户名</label>
+        <input id="cfgUsername" placeholder="admin">
+      </div>
+      <div class="form-group">
+        <label>新密码（留空则不修改）</label>
+        <input id="cfgPassword" type="password" placeholder="留空则不修改密码">
+      </div>
+      <div class="form-group">
+        <label>当前密码 <span style="color:#e74c3c;">*</span></label>
+        <input id="cfgCurrentPassword" type="password" placeholder="请输入当前密码以确认修改">
+        <span class="hint">修改用户名或密码都需要输入当前密码</span>
+      </div>
+      <button class="btn btn-success" onclick="saveAccount()">保存账号设置</button>
+    </div>
+
+    <div class="section">
       <h4>基本信息</h4>
       <div class="form-group">
         <label>网站名称</label>
@@ -90,12 +108,46 @@
 
     async function init() {
       if (!checkAdmin()) return;
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.username) document.getElementById('cfgUsername').placeholder = user.username;
+      } catch (e) {}
       const res = await apiFetch('/api/admin/config');
       const data = await res.json();
       if (data.code === 0) {
         if (data.data.site_name) document.getElementById('cfgSiteName').value = data.data.site_name;
         if (data.data.site_description) document.getElementById('cfgSiteDesc').value = data.data.site_description;
         if (data.data.site_announcement) document.getElementById('cfgAnnouncement').value = data.data.site_announcement;
+      }
+    }
+
+    async function saveAccount() {
+      const newUsername = document.getElementById('cfgUsername').value.trim();
+      const newPassword = document.getElementById('cfgPassword').value;
+      const currentPassword = document.getElementById('cfgCurrentPassword').value;
+
+      if (!currentPassword) { toast('请输入当前密码', 'error'); return; }
+      if (!newUsername && !newPassword) { toast('请填写要修改的内容', 'error'); return; }
+
+      const res = await apiFetch('/api/admin/account', {
+        method: 'POST', body: JSON.stringify({ newUsername: newUsername || undefined, newPassword: newPassword || undefined, currentPassword })
+      });
+      const data = await res.json();
+      if (data.code === 0) {
+        document.getElementById('cfgPassword').value = '';
+        document.getElementById('cfgCurrentPassword').value = '';
+        if (newUsername) {
+          try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            user.username = newUsername;
+            localStorage.setItem('user', JSON.stringify(user));
+            document.getElementById('cfgUsername').placeholder = newUsername;
+            document.getElementById('cfgUsername').value = '';
+          } catch (e) {}
+        }
+        toast(data.msg, 'success');
+      } else {
+        toast(data.msg, 'error');
       }
     }
 

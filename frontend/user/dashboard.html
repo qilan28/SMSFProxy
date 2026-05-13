@@ -12,15 +12,19 @@
     .header-right { display: flex; align-items: center; gap: 16px; }
     .header-right a { color: #fff; text-decoration: none; font-size: 14px; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 6px; }
     .header-right a:hover { background: rgba(255,255,255,0.3); }
-    .top-bar { display: flex; gap: 16px; padding: 16px; align-items: stretch; flex-wrap: wrap; }
+    .top-bar { display: flex; gap: 16px; padding: 16px 16px 0; align-items: stretch; }
     .balance-card { background: #fff; border-radius: 10px; padding: 16px 20px; font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); white-space: nowrap; display: flex; align-items: center; gap: 8px; }
     .balance-card strong { color: #667eea; font-size: 22px; }
-    .acquire-card { background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; flex: 1; }
-    .field { display: flex; flex-direction: column; gap: 2px; }
-    .field label { font-size: 12px; color: #888; }
-    .field select, .field input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; min-width: 140px; }
-    .field select:focus, .field input:focus { border-color: #667eea; }
-    .field .price { font-size: 15px; font-weight: 600; color: #e74c3c; padding: 8px 0; }
+    .announcement-bar { flex: 1; background: #fff; border-radius: 10px; padding: 14px 20px; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); color: #555; display: flex; align-items: center; line-height: 1.5; border-left: 4px solid #667eea; }
+    .section-card { margin: 16px; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section-card h3 { font-size: 16px; margin-bottom: 14px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .acquire-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .acquire-form .field { display: flex; flex-direction: column; gap: 2px; }
+    .acquire-form .field label { font-size: 12px; color: #888; }
+    .acquire-form select, .acquire-form input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; min-width: 140px; }
+    .acquire-form select:focus, .acquire-form input:focus { border-color: #667eea; }
+    .service-desc { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.5; }
+    .acquire-form .price { font-size: 15px; font-weight: 600; color: #e74c3c; padding: 8px 0; }
     .btn { padding: 9px 20px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; color: #fff; white-space: nowrap; transition: opacity 0.15s; }
     .btn:hover { opacity: 0.85; }
     .btn-primary { background: #667eea; }
@@ -30,9 +34,6 @@
     .btn-sm { padding: 3px 8px; font-size: 11px; }
     .btn-xs { padding: 2px 6px; font-size: 10px; }
 
-    .order-panel { margin: 0 16px 16px; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .order-panel h3 { font-size: 16px; margin-bottom: 14px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .order-panel h3 span { font-size: 13px; color: #888; font-weight: normal; }
     .btn-clear { background: #e74c3c; padding: 5px 12px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { text-align: left; padding: 10px 6px; border-bottom: 2px solid #eee; color: #666; font-weight: 600; background: #fafafa; white-space: nowrap; }
@@ -44,7 +45,10 @@
     .status-completed { background: #55efc4; color: #007a4d; }
     .status-cancelled, .status-released, .status-blacklisted { background: #dfe6e9; color: #636e72; }
     .status-failed { background: #fab1a0; color: #c0392b; }
-    .sms-code-cell { font-size: 18px; font-weight: bold; color: #27ae60; letter-spacing: 2px; }
+    .sms-code-cell { font-size: 18px; font-weight: bold; color: #27ae60; letter-spacing: 2px; cursor: pointer; user-select: all; }
+    .sms-code-cell:hover { background: #e8f5e9; border-radius: 4px; }
+    .phone-cell { cursor: pointer; user-select: all; }
+    .phone-cell:hover { background: #e8f0fe; border-radius: 4px; }
     .sms-content-cell { font-size: 11px; color: #888; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
     .sms-content-cell:hover { color: #555; }
     .actions { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -69,8 +73,12 @@
     <div class="balance-card">
       余额: <strong id="balanceDisplay">0.00</strong> 元
     </div>
+    <div class="announcement-bar" id="announcementBar" style="display:none;"></div>
+  </div>
 
-    <div class="acquire-card">
+  <div class="section-card">
+    <h3>获取号码</h3>
+    <div class="acquire-form">
       <div class="field">
         <label>服务项目</label>
         <select id="serviceSelect">
@@ -86,18 +94,19 @@
         <div class="price" id="selectedPrice">-</div>
       </div>
       <button class="btn btn-primary" onclick="acquireNumber()">获取手机号</button>
+      <span class="service-desc" id="serviceDesc" style="display:none;"></span>
     </div>
   </div>
 
-  <div class="order-panel">
+  <div class="section-card">
     <h3>订单记录 <span id="orderCount"></span><button class="btn btn-clear" onclick="clearHistory()">清除历史记录</button></h3>
     <div style="overflow-x:auto;">
       <table>
         <thead>
-          <tr><th>ID</th><th>服务</th><th>号码</th><th>验证码</th><th>短信内容</th><th>状态</th><th>金额</th><th>时间</th><th>操作</th></tr>
+          <tr><th>ID</th><th>服务</th><th>区号</th><th>号码</th><th>验证码</th><th>短信内容</th><th>状态</th><th>金额</th><th>时间</th><th>操作</th></tr>
         </thead>
         <tbody id="orderTableBody">
-          <tr><td colspan="9" class="empty-state">暂无订单</td></tr>
+          <tr><td colspan="10" class="empty-state">暂无订单</td></tr>
         </tbody>
       </table>
     </div>
@@ -129,9 +138,16 @@
       try {
         const res = await fetch('/api/site-info');
         const data = await res.json();
-        if (data.code === 0 && data.data.site_name) {
-          document.getElementById('siteName').textContent = data.data.site_name;
-          document.title = data.data.site_name;
+        if (data.code === 0) {
+          if (data.data.site_name) {
+            document.getElementById('siteName').textContent = data.data.site_name;
+            document.title = data.data.site_name;
+          }
+          if (data.data.site_announcement) {
+            const bar = document.getElementById('announcementBar');
+            bar.textContent = data.data.site_announcement;
+            bar.style.display = '';
+          }
         }
       } catch (e) {}
     }
@@ -173,10 +189,16 @@
 
     document.getElementById('serviceSelect').addEventListener('change', function() {
       const opt = this.options[this.selectedIndex];
+      const descEl = document.getElementById('serviceDesc');
       if (opt.dataset.price) {
         document.getElementById('selectedPrice').textContent = '¥' + parseFloat(opt.dataset.price).toFixed(2);
+        if (opt.dataset.description) {
+          descEl.textContent = opt.dataset.description;
+          descEl.style.display = '';
+        } else {
+          descEl.style.display = 'none';
+        }
         const requireMobile = parseInt(opt.dataset.requireMobile) || 0;
-        // 0=disabled, 1=required, 2=optional
         if (requireMobile >= 1) {
           document.getElementById('mobileField').style.display = '';
           document.getElementById('mobileRequired').style.display = requireMobile === 1 ? '' : 'none';
@@ -188,6 +210,7 @@
       } else {
         document.getElementById('selectedPrice').textContent = '-';
         document.getElementById('mobileField').style.display = 'none';
+        descEl.style.display = 'none';
       }
     });
 
@@ -255,6 +278,7 @@
       stopAutoPoll();
       pollTimer = setInterval(async () => {
         try {
+          await refreshBalance();
           const res = await apiFetch('/api/services/orders');
           const data = await res.json();
           if (data.code === 0) {
@@ -283,12 +307,18 @@
           let html = '';
           orders.forEach(o => {
             const isActive = o.status === 'waiting_sms' || o.status === 'pending';
+            const phoneFull = o.phone_number || '';
+            const phoneParts = phoneFull.split(' ');
+            const areaCode = phoneParts[0] || '';
+            const localNum = phoneParts.slice(1).join(' ') || '';
+            const smsCode = o.sms_code || '';
             html += `<tr>
               <td>${o.id}</td>
               <td>${esc(o.service_name || '-')}</td>
-              <td><strong>${esc(o.phone_number || '-')}</strong></td>
-              <td class="sms-code-cell">${o.sms_code || (o.status === 'waiting_sms' ? '<span style="color:#aaa;font-size:12px;">等待中</span>' : '-')}</td>
-              <td class="sms-content-cell" title="${esc(o.sms_code || '')}">${o.status === 'completed' && o.sms_code ? esc(o.sms_code) : '-'}</td>
+              <td class="phone-cell" onclick="${areaCode ? `copyText('${esc(areaCode)}','区号')` : ''}" title="${areaCode ? '点击复制' : ''}"><strong>${esc(areaCode || '-')}</strong></td>
+              <td class="phone-cell" onclick="${localNum ? `copyText('${esc(localNum)}','号码')` : ''}" title="${localNum ? '点击复制' : ''}"><strong>${esc(localNum || '-')}</strong></td>
+              <td class="sms-code-cell" onclick="${smsCode ? `copyText('${esc(smsCode)}','验证码')` : ''}" title="${smsCode ? '点击复制' : ''}">${smsCode || (o.status === 'waiting_sms' ? '<span style="color:#aaa;font-size:12px;">等待中</span>' : '-')}</td>
+              <td class="sms-content-cell" title="${esc(o.sms_code || '')}">${o.status === 'completed' && smsCode ? esc(smsCode) : '-'}</td>
               <td><span class="status status-${o.status}">${statusMap[o.status] || o.status}</span></td>
               <td>¥${o.amount.toFixed(2)}</td>
               <td style="font-size:12px;color:#999;">${o.created_at ? new Date(o.created_at).toLocaleString('zh-CN') : '-'}</td>
@@ -302,7 +332,7 @@
           document.getElementById('orderTableBody').innerHTML = html;
         } else {
           document.getElementById('orderCount').textContent = '';
-          document.getElementById('orderTableBody').innerHTML = '<tr><td colspan="9" class="empty-state">暂无订单，请先获取手机号</td></tr>';
+          document.getElementById('orderTableBody').innerHTML = '<tr><td colspan="10" class="empty-state">暂无订单</td></tr>';
         }
       } catch (e) { console.error(e); }
     }
@@ -318,6 +348,18 @@
           localStorage.setItem('user', JSON.stringify(user));
         }
       } catch (e) {}
+    }
+
+    async function copyText(text, label) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast(`已复制${label}: ${text}`, 'success');
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        toast(`已复制${label}`, 'success');
+      }
     }
 
     function esc(str) {
