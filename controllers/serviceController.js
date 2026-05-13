@@ -101,12 +101,19 @@ exports.getSmsCode = async (req, res) => {
         const errCode = result.code || '';
         if (errCode === '-3') {
           res.json({ code: 1, msg: '验证码尚未到达，请5秒后重试', data: { smsCode: null } });
-        } else if (errCode === '-4') {
-          Order.updateStatus(orderId, 'released');
-          res.json({ code: 400, msg: '号码已离线或强制释放' });
-        } else if (errCode === '-5') {
-          Order.updateStatus(orderId, 'blacklisted');
-          res.json({ code: 400, msg: '号码已被强制加黑' });
+        } else if (errCode === '-4' || errCode === '-5') {
+          // Only release/blacklist if the order has exceeded the service timeout
+          // Otherwise the upstream -4/-5 may be transient
+          const service = Service.findById(order.service_id);
+          const timeout = service ? service.timeout : 300;
+          const orderAge = Math.floor((Date.now() - new Date(order.created_at + 'Z').getTime()) / 1000);
+          if (orderAge > timeout) {
+            const newStatus = errCode === '-4' ? 'released' : 'blacklisted';
+            Order.updateStatus(orderId, newStatus);
+            res.json({ code: 400, msg: errCode === '-4' ? '号码已离线或强制释放' : '号码已被强制加黑' });
+          } else {
+            res.json({ code: 1, msg: '验证码尚未到达，请稍后重试', data: { smsCode: null } });
+          }
         } else {
           res.json({ code: 1, msg: '验证码尚未到达，请稍后重试', data: { smsCode: null } });
         }

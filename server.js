@@ -60,6 +60,7 @@ app.use((err, req, res, next) => {
 });
 
 const Order = require('./models/Order');
+const { db } = require('./config/database');
 
 const AUTO_CLEANUP_DAYS = parseInt(process.env.AUTO_CLEANUP_DAYS, 10) || 7;
 const AUTO_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -77,6 +78,24 @@ if (AUTO_CLEANUP_DAYS > 0) {
   }, AUTO_CLEANUP_INTERVAL);
   console.log(`Auto-cleanup enabled: deleting terminal orders older than ${AUTO_CLEANUP_DAYS} days (checked hourly)`);
 }
+
+// Auto-release orders past service timeout (checked every 30 seconds)
+const TIMEOUT_CHECK_INTERVAL = 30 * 1000;
+setInterval(() => {
+  try {
+    const expired = db.prepare(`
+      UPDATE orders SET status = 'released'
+      WHERE status = 'waiting_sms'
+      AND datetime(created_at, '+' || COALESCE((SELECT timeout FROM services WHERE services.id = orders.service_id), 300) || ' seconds') < datetime('now')
+    `).run();
+    if (expired.changes > 0) {
+      console.log(`[TimeoutCheck] Auto-released ${expired.changes} expired order(s)`);
+    }
+  } catch (e) {
+    console.error('[TimeoutCheck] Error:', e.message);
+  }
+}, TIMEOUT_CHECK_INTERVAL);
+console.log('Timeout check enabled: releasing expired orders every 30 seconds');
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
