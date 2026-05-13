@@ -32,7 +32,7 @@
 </head>
 <body>
   <div class="header">
-    <h2>SMSF 接码平台</h2>
+    <h2 id="siteName">SMSF 接码平台</h2>
     <a href="/dashboard">返回控制台</a>
   </div>
 
@@ -74,10 +74,22 @@
       return true;
     }
 
+    async function loadSiteInfo() {
+      try {
+        const res = await fetch('/api/site-info');
+        const data = await res.json();
+        if (data.code === 0 && data.data.site_name) {
+          document.getElementById('siteName').textContent = data.data.site_name;
+          document.title = data.data.site_name + ' - 充值';
+        }
+      } catch (e) {}
+    }
+
     function init() {
       if (!checkLogin()) return;
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       document.getElementById('balanceDisplay').textContent = (user.balance || 0).toFixed(2);
+      loadSiteInfo();
     }
 
     async function doRecharge() {

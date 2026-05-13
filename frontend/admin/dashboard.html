@@ -37,12 +37,13 @@
 </head>
 <body>
   <div class="sidebar">
-    <h3>SMSF 管理后台</h3>
+    <h3 id="sidebarTitle">SMSF 管理后台</h3>
     <a href="/admin/dashboard" class="active">首页概览</a>
     <a href="/admin/services">服务管理</a>
     <a href="/admin/cards">卡密管理</a>
     <a href="/admin/users">用户管理</a>
     <a href="/admin/orders">订单管理</a>
+    <a href="/admin/settings">网站设置</a>
   </div>
 
   <div class="main">
@@ -89,6 +90,17 @@
       if (res.status === 401) { localStorage.clear(); window.location.href = '/admin'; throw new Error('Unauthorized'); }
       return res;
     }
+
+    (async function loadSiteName() {
+      try {
+        const res = await fetch('/api/site-info');
+        const data = await res.json();
+        if (data.code === 0 && data.data.site_name) {
+          document.getElementById('sidebarTitle').textContent = data.data.site_name + ' 管理后台';
+          document.title = data.data.site_name + ' - 管理后台';
+        }
+      } catch (e) {}
+    })();
 
     async function init() {
       if (!checkAdmin()) return;

@@ -26,8 +26,8 @@
 </head>
 <body>
   <div class="container">
-    <h1>SMSF 接码平台</h1>
-    <p class="subtitle">用户注册</p>
+    <h1 id="siteName">SMSF 接码平台</h1>
+    <p class="subtitle" id="siteDesc">用户注册</p>
     <div class="alert alert-error" id="alert"></div>
     <form id="registerForm">
       <div class="form-group">
@@ -78,6 +78,21 @@
         }
       } catch (err) { showAlert('网络错误'); btn.disabled = false; btn.textContent = '注册'; }
     });
+
+    // Load site config
+    (async function() {
+      try {
+        const res = await fetch('/api/site-info');
+        const data = await res.json();
+        if (data.code === 0 && data.data.site_name) {
+          document.getElementById('siteName').textContent = data.data.site_name;
+          document.title = '注册 - ' + data.data.site_name;
+        }
+        if (data.data && data.data.site_description) {
+          document.getElementById('siteDesc').textContent = data.data.site_description;
+        }
+      } catch (e) {}
+    })();
 
     function showAlert(msg) {
       const el = document.getElementById('alert');

@@ -27,8 +27,8 @@
 </head>
 <body>
   <div class="container">
-    <h1>SMSF 接码平台</h1>
-    <p class="subtitle">用户登录</p>
+    <h1 id="siteName">SMSF 接码平台</h1>
+    <p class="subtitle" id="siteDesc">用户登录</p>
     <div class="alert alert-error" id="alert"></div>
     <form id="loginForm">
       <div class="form-group">
@@ -77,6 +77,21 @@
       const el = document.getElementById('alert');
       el.textContent = msg; el.style.display = 'block';
     }
+
+    // Load site config
+    (async function() {
+      try {
+        const res = await fetch('/api/site-info');
+        const data = await res.json();
+        if (data.code === 0 && data.data.site_name) {
+          document.getElementById('siteName').textContent = data.data.site_name;
+          document.title = '登录 - ' + data.data.site_name;
+        }
+        if (data.data && data.data.site_description) {
+          document.getElementById('siteDesc').textContent = data.data.site_description;
+        }
+      } catch (e) {}
+    })();
 
     // Auto redirect if already logged in
     (function() {

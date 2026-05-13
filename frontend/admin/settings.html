@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网站设置 - SMSF</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; }
+    .sidebar { width: 220px; background: #2c3e50; color: #fff; padding: 20px 0; min-height: 100vh; position: fixed; top: 0; bottom: 0; }
+    .sidebar h3 { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 16px; }
+    .sidebar a { display: block; padding: 12px 20px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; transition: all 0.2s; border-left: 3px solid transparent; }
+    .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,0.08); border-left-color: #3498db; color: #fff; }
+    .main { flex: 1; padding: 24px; margin-left: 220px; }
+    .section { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; }
+    .section h4 { margin-bottom: 16px; color: #333; font-size: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; font-weight: 500; }
+    .form-group input, .form-group textarea { width: 100%; max-width: 500px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; font-family: inherit; transition: border-color 0.2s; }
+    .form-group input:focus, .form-group textarea:focus { border-color: #3498db; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group .hint { font-size: 11px; color: #999; margin-top: 4px; }
+    .btn { padding: 10px 24px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; color: #fff; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #3498db; }
+    .btn-success { background: #27ae60; }
+    .toast { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast-success { background: #27ae60; }
+    .toast-error { background: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3 id="sidebarTitle">SMSF 管理后台</h3>
+    <a href="/admin/dashboard">首页概览</a>
+    <a href="/admin/services">服务管理</a>
+    <a href="/admin/cards">卡密管理</a>
+    <a href="/admin/users">用户管理</a>
+    <a href="/admin/orders">订单管理</a>
+    <a href="/admin/settings" class="active">网站设置</a>
+  </div>
+
+  <div class="main">
+    <h2 style="margin-bottom:20px;">网站设置</h2>
+
+    <div class="section">
+      <h4>基本信息</h4>
+      <div class="form-group">
+        <label>网站名称</label>
+        <input id="cfgSiteName" placeholder="如：SMSF 接码平台">
+        <span class="hint">显示在页面标题、顶部导航栏等位置</span>
+      </div>
+      <div class="form-group">
+        <label>网站描述</label>
+        <input id="cfgSiteDesc" placeholder="如：全球接码服务平台">
+        <span class="hint">显示在登录/注册页面的副标题</span>
+      </div>
+      <div class="form-group">
+        <label>首页公告</label>
+        <textarea id="cfgAnnouncement" placeholder="如：欢迎使用本平台，充值请联系客服..."></textarea>
+        <span class="hint">显示在用户首页的公告信息，留空则不显示</span>
+      </div>
+      <button class="btn btn-primary" onclick="saveAllSettings()">保存设置</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = '';
+    function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }; }
+    function checkAdmin() { if (!localStorage.getItem('token')) { window.location.href = '/admin'; return false; } return true; }
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(API + path, { ...options, headers: { ...getHeaders(), ...(options.headers || {}) } });
+      if (res.status === 401) { localStorage.clear(); window.location.href = '/admin'; throw new Error('Unauthorized'); }
+      return res;
+    }
+
+    (async function loadSiteName() {
+      try {
+        const res = await fetch('/api/site-info');
+        const data = await res.json();
+        if (data.code === 0 && data.data.site_name) {
+          document.getElementById('sidebarTitle').textContent = data.data.site_name + ' 管理后台';
+          document.title = '网站设置 - ' + data.data.site_name;
+        }
+      } catch (e) {}
+    })();
+
+    async function init() {
+      if (!checkAdmin()) return;
+      const res = await apiFetch('/api/admin/config');
+      const data = await res.json();
+      if (data.code === 0) {
+        if (data.data.site_name) document.getElementById('cfgSiteName').value = data.data.site_name;
+        if (data.data.site_description) document.getElementById('cfgSiteDesc').value = data.data.site_description;
+        if (data.data.site_announcement) document.getElementById('cfgAnnouncement').value = data.data.site_announcement;
+      }
+    }
+
+    async function saveConfig(key, value) {
+      await apiFetch('/api/admin/config', {
+        method: 'POST', body: JSON.stringify({ key, value })
+      });
+    }
+
+    async function saveAllSettings() {
+      const name = document.getElementById('cfgSiteName').value.trim();
+      const desc = document.getElementById('cfgSiteDesc').value.trim();
+      const announcement = document.getElementById('cfgAnnouncement').value.trim();
+
+      await saveConfig('site_name', name);
+      await saveConfig('site_description', desc);
+      await saveConfig('site_announcement', announcement);
+
+      toast('网站设置已保存', 'success');
+    }
+
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = 'toast toast-' + type + ' show';
+      setTimeout(() => { el.className = 'toast'; }, 3000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

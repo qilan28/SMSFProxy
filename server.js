@@ -18,6 +18,15 @@ const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
 app.use('/api/', limiter);
 
+// Public site info (no auth required)
+app.get('/api/site-info', (req, res) => {
+  const { db } = require('./config/database');
+  const configs = db.prepare('SELECT * FROM system_config WHERE key IN (?, ?, ?)').all('site_name', 'site_description', 'site_announcement');
+  const config = {};
+  configs.forEach(c => { config[c.key] = c.value; });
+  res.json({ code: 0, data: config });
+});
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/user', require('./routes/user'));
@@ -39,6 +48,7 @@ app.get('/admin/services', (req, res) => res.sendFile(path.join(__dirname, 'fron
 app.get('/admin/cards', (req, res) => res.sendFile(path.join(__dirname, 'frontend', 'admin', 'cards.html')));
 app.get('/admin/users', (req, res) => res.sendFile(path.join(__dirname, 'frontend', 'admin', 'users.html')));
 app.get('/admin/orders', (req, res) => res.sendFile(path.join(__dirname, 'frontend', 'admin', 'orders.html')));
+app.get('/admin/settings', (req, res) => res.sendFile(path.join(__dirname, 'frontend', 'admin', 'settings.html')));
 
 // 404 handler
 app.use((req, res) => res.status(404).json({ code: 404, msg: 'Not Found' }));
