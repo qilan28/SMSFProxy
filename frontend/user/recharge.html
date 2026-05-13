@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>充值 - SMSF 接码平台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header h2 { font-size: 18px; }
+    .header a { color: #fff; text-decoration: none; font-size: 14px; }
+    .container { max-width: 500px; margin: 40px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .card h3 { margin-bottom: 8px; color: #333; }
+    .card .desc { color: #888; font-size: 13px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; color: #555; }
+    input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+    input:focus { border-color: #667eea; }
+    button { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .balance-info { background: #f8f9ff; border: 1px solid #d5d9f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
+    .balance-info strong { color: #667eea; }
+    .result { margin-top: 16px; padding: 12px; border-radius: 8px; display: none; font-size: 14px; }
+    .result-success { background: #e8f8f0; color: #27ae60; border: 1px solid #a3e4c1; }
+    .result-error { background: #fce4e4; color: #e74c3c; border: 1px solid #f5c6cb; }
+    .nav-back { margin-bottom: 16px; }
+    .nav-back a { color: #667eea; text-decoration: none; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>SMSF 接码平台</h2>
+    <a href="/dashboard">返回控制台</a>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h3>卡密充值</h3>
+      <p class="desc">请输入从管理员处获取的充值卡密</p>
+
+      <div class="balance-info">
+        当前余额: <strong id="balanceDisplay">0.00</strong> 元
+      </div>
+
+      <div class="form-group">
+        <label>充值卡密</label>
+        <input type="text" id="cardKey" placeholder="请输入卡密" autocomplete="off">
+      </div>
+      <button onclick="doRecharge()">立即充值</button>
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+
+    async function apiFetch(path, options = {}) {
+      const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') };
+      const res = await fetch(API + path, { ...options, headers: { ...headers, ...(options.headers || {}) } });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+      }
+      return res;
+    }
+
+    function checkLogin() {
+      if (!localStorage.getItem('token')) { window.location.href = '/login'; return false; }
+      return true;
+    }
+
+    function init() {
+      if (!checkLogin()) return;
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      document.getElementById('balanceDisplay').textContent = (user.balance || 0).toFixed(2);
+    }
+
+    async function doRecharge() {
+      if (!checkLogin()) return;
+      const cardKey = document.getElementById('cardKey').value.trim();
+      if (!cardKey) return showResult('请输入卡密', 'error');
+
+      const btn = document.querySelector('button');
+      btn.disabled = true; btn.textContent = '充值中...';
+
+      try {
+        const res = await apiFetch('/api/user/recharge', {
+          method: 'POST', body: JSON.stringify({ cardKey })
+        });
+        const data = await res.json();
+        if (data.code === 0) {
+          showResult(data.msg, 'success');
+          document.getElementById('cardKey').value = '';
+          // Update local balance
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          user.balance = (user.balance || 0) + data.data.amount;
+          localStorage.setItem('user', JSON.stringify(user));
+          document.getElementById('balanceDisplay').textContent = user.balance.toFixed(2);
+        } else {
+          showResult(data.msg, 'error');
+        }
+      } catch (e) { showResult('网络错误', 'error'); }
+      btn.disabled = false; btn.textContent = '立即充值';
+    }
+
+    function showResult(msg, type) {
+      const el = document.getElementById('result');
+      el.textContent = msg;
+      el.className = 'result result-' + type;
+      el.style.display = 'block';
+    }
+
+    init();
+  </script>
+</body>
+</html>

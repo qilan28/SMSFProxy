@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡密管理 - SMSF</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; }
+    .sidebar { width: 220px; background: #2c3e50; color: #fff; padding: 20px 0; min-height: 100vh; }
+    .sidebar h3 { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 16px; }
+    .sidebar a { display: block; padding: 12px 20px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; transition: background 0.2s; border-left: 3px solid transparent; }
+    .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,0.08); border-left-color: #3498db; color: #fff; }
+    .main { flex: 1; padding: 24px; }
+    .section { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; }
+    .section h4 { margin-bottom: 12px; color: #333; font-size: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; color: #fff; }
+    .btn-primary { background: #3498db; }
+    .btn-success { background: #27ae60; }
+    input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; margin-right: 8px; outline: none; }
+    input:focus { border-color: #3498db; }
+    .form-inline { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .form-inline input { width: 130px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px; border-bottom: 1px solid #eee; color: #666; font-weight: 500; background: #fafafa; }
+    td { padding: 8px; border-bottom: 1px solid #f5f5f5; }
+    .key-display { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; margin-top: 12px; display: none; }
+    .key-item { font-family: 'Courier New', monospace; padding: 4px 0; border-bottom: 1px dashed #eee; font-size: 13px; cursor: pointer; }
+    .key-item:hover { background: #e8f0fe; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+    .badge-unused { background: #d4edda; color: #155724; }
+    .badge-used { background: #f8d7da; color: #721c24; }
+    .toast { position: fixed; top: 20px; right: 20px; padding: 10px 24px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast-success { background: #27ae60; }
+    .toast-error { background: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3>SMSF 管理后台</h3>
+    <a href="/admin/dashboard">首页概览</a>
+    <a href="/admin/services">服务管理</a>
+    <a href="/admin/cards" class="active">卡密管理</a>
+    <a href="/admin/users">用户管理</a>
+    <a href="/admin/orders">订单管理</a>
+  </div>
+
+  <div class="main">
+    <h2 style="margin-bottom:20px;">卡密管理</h2>
+
+    <div class="section">
+      <h4>生成卡密</h4>
+      <div class="form-inline">
+        <input id="cardAmount" placeholder="面额(元)" type="number" step="0.01">
+        <input id="cardCount" placeholder="数量" type="number" value="1">
+        <button class="btn btn-primary" onclick="generateCards()">生成卡密</button>
+      </div>
+      <div class="key-display" id="keyDisplay">
+        <div style="margin-bottom:8px;font-size:13px;color:#888;">点击卡密可复制，<strong>请立即保存</strong></div>
+        <div id="keyList"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h4>卡密记录</h4>
+      <table>
+        <thead><tr><th>ID</th><th>卡密</th><th>面额</th><th>状态</th><th>使用者</th><th>生成时间</th><th>使用时间</th></tr></thead>
+        <tbody id="cardTableBody"><tr><td colspan="7">加载中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = '';
+    function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }; }
+    function checkAdmin() { if (!localStorage.getItem('token')) { window.location.href = '/admin'; return false; } return true; }
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(API + path, { ...options, headers: { ...getHeaders(), ...(options.headers || {}) } });
+      if (res.status === 401) { localStorage.clear(); window.location.href = '/admin'; throw new Error('Unauthorized'); }
+      return res;
+    }
+
+    async function generateCards() {
+      if (!checkAdmin()) return;
+      const amount = document.getElementById('cardAmount').value;
+      const count = document.getElementById('cardCount').value;
+      if (!amount || amount <= 0) return toast('请输入有效面额', 'error');
+      if (!count || count < 1 || count > 1000) return toast('数量1-1000', 'error');
+
+      const res = await apiFetch('/api/admin/cards/generate', {
+        method: 'POST', body: JSON.stringify({ amount: parseFloat(amount), count: parseInt(count) })
+      });
+      const data = await res.json();
+      toast(data.msg, data.code === 0 ? 'success' : 'error');
+      if (data.code === 0 && data.data.keys) {
+        let html = '';
+        data.data.keys.forEach(k => {
+          html += `<div class="key-item" onclick="copyKey('${k}')">${k}</div>`;
+        });
+        document.getElementById('keyList').innerHTML = html;
+        document.getElementById('keyDisplay').style.display = 'block';
+        loadCards();
+      }
+    }
+
+    async function copyKey(key) {
+      try {
+        await navigator.clipboard.writeText(key);
+        toast('已复制: ' + key, 'success');
+      } catch (e) {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = key; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        toast('已复制', 'success');
+      }
+    }
+
+    async function loadCards() {
+      if (!checkAdmin()) return;
+      const res = await apiFetch('/api/admin/cards');
+      const data = await res.json();
+      if (data.code === 0) {
+        let html = '';
+        data.data.keys.forEach(c => {
+          html += `<tr>
+            <td>${c.id}</td>
+            <td style="font-family:monospace;font-size:12px;">${c.card_key.substring(0, 10)}...</td>
+            <td>¥${c.amount.toFixed(2)}</td>
+            <td><span class="badge ${c.is_used ? 'badge-used' : 'badge-unused'}">${c.is_used ? '已使用' : '未使用'}</span></td>
+            <td>${c.used_by_username || '-'}</td>
+            <td>${c.created_at}</td>
+            <td>${c.used_at || '-'}</td>
+          </tr>`;
+        });
+        document.getElementById('cardTableBody').innerHTML = html || '<tr><td colspan="7">暂无记录</td></tr>';
+      }
+    }
+
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = 'toast toast-' + type + ' show';
+      setTimeout(() => { el.className = 'toast'; }, 3000);
+    }
+
+    loadCards();
+  </script>
+</body>
+</html>

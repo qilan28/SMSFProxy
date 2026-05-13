@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户中心 - SMSF 接码平台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h2 { font-size: 18px; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .header-right a { color: #fff; text-decoration: none; font-size: 14px; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 6px; }
+    .header-right a:hover { background: rgba(255,255,255,0.3); }
+    .top-bar { display: flex; gap: 16px; padding: 16px; align-items: stretch; flex-wrap: wrap; }
+    .balance-card { background: #fff; border-radius: 10px; padding: 16px 20px; font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+    .balance-card strong { color: #667eea; font-size: 22px; }
+    .acquire-card { background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; flex: 1; }
+    .field { display: flex; flex-direction: column; gap: 2px; }
+    .field label { font-size: 12px; color: #888; }
+    .field select, .field input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; min-width: 140px; }
+    .field select:focus, .field input:focus { border-color: #667eea; }
+    .field .price { font-size: 15px; font-weight: 600; color: #e74c3c; padding: 8px 0; }
+    .btn { padding: 9px 20px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; color: #fff; white-space: nowrap; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #667eea; }
+    .btn-success { background: #27ae60; }
+    .btn-danger { background: #e74c3c; }
+    .btn-warning { background: #f39c12; }
+    .btn-sm { padding: 3px 8px; font-size: 11px; }
+    .btn-xs { padding: 2px 6px; font-size: 10px; }
+
+    .order-panel { margin: 0 16px 16px; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .order-panel h3 { font-size: 16px; margin-bottom: 14px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; display: flex; justify-content: space-between; }
+    .order-panel h3 span { font-size: 13px; color: #888; font-weight: normal; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 6px; border-bottom: 2px solid #eee; color: #666; font-weight: 600; background: #fafafa; white-space: nowrap; }
+    td { padding: 8px 6px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    tr:hover td { background: #fafbff; }
+    .status { padding: 2px 8px; border-radius: 10px; font-size: 11px; display: inline-block; }
+    .status-pending { background: #ffeaa7; color: #d68910; }
+    .status-waiting_sms { background: #81ecec; color: #0a7e7e; }
+    .status-completed { background: #55efc4; color: #007a4d; }
+    .status-cancelled, .status-released, .status-blacklisted { background: #dfe6e9; color: #636e72; }
+    .status-failed { background: #fab1a0; color: #c0392b; }
+    .sms-code-cell { font-size: 18px; font-weight: bold; color: #27ae60; letter-spacing: 2px; }
+    .sms-content-cell { font-size: 11px; color: #888; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .sms-content-cell:hover { color: #555; }
+    .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+    .empty-state { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast-success { background: #27ae60; }
+    .toast-error { background: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>SMSF 接码平台</h2>
+    <div class="header-right">
+      <span>欢迎, <strong id="headerUsername"></strong></span>
+      <a href="/recharge">充值</a>
+      <a href="#" onclick="logout()">退出</a>
+    </div>
+  </div>
+
+  <div class="top-bar">
+    <div class="balance-card">
+      余额: <strong id="balanceDisplay">0.00</strong> 元
+    </div>
+
+    <div class="acquire-card">
+      <div class="field">
+        <label>服务项目</label>
+        <select id="serviceSelect">
+          <option value="">-- 请选择 --</option>
+        </select>
+      </div>
+      <div class="field" id="mobileField" style="display:none;">
+        <label>指定号码 <span style="color:#e74c3c;">*</span></label>
+        <input id="mobileInput" placeholder="号段或完整号码" style="width:150px;">
+      </div>
+      <div class="field">
+        <label>费用</label>
+        <div class="price" id="selectedPrice">-</div>
+      </div>
+      <button class="btn btn-primary" onclick="acquireNumber()">获取手机号</button>
+    </div>
+  </div>
+
+  <div class="order-panel">
+    <h3>订单记录 <span id="orderCount"></span></h3>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>服务</th><th>号码</th><th>验证码</th><th>短信内容</th><th>状态</th><th>金额</th><th>时间</th><th>操作</th></tr>
+        </thead>
+        <tbody id="orderTableBody">
+          <tr><td colspan="9" class="empty-state">暂无订单</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = '';
+    const statusMap = { pending: '待获取', waiting_sms: '等待验证码', completed: '已完成', cancelled: '已取消', released: '已释放', blacklisted: '已拉黑', failed: '失败' };
+    let pollTimer = null;
+
+    function getHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') };
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(API + path, { ...options, headers: { ...getHeaders(), ...(options.headers || {}) } });
+      if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; throw new Error('Unauthorized'); }
+      return res;
+    }
+
+    function checkLogin() {
+      if (!localStorage.getItem('token')) { window.location.href = '/login'; return false; }
+      return true;
+    }
+
+    async function init() {
+      if (!checkLogin()) return;
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      document.getElementById('headerUsername').textContent = user.username || '';
+      document.getElementById('balanceDisplay').textContent = (user.balance || 0).toFixed(2);
+      await loadServices();
+      await loadOrders();
+      startAutoPoll();
+    }
+
+    async function loadServices() {
+      try {
+        const res = await apiFetch('/api/services');
+        const data = await res.json();
+        if (data.code === 0) {
+          const sel = document.getElementById('serviceSelect');
+          data.data.forEach(s => {
+            const opt = document.createElement('option');
+            let label = s.name + ' - ¥' + s.price.toFixed(2);
+            if (s.country) label += ' [' + s.country + ']';
+            opt.textContent = label;
+            opt.value = s.id;
+            opt.dataset.price = s.price;
+            opt.dataset.country = s.country || '';
+            opt.dataset.operator = s.operator || '';
+            opt.dataset.description = s.description || '';
+            opt.dataset.timeout = s.timeout || '300';
+            opt.dataset.requireMobile = s.require_mobile || '0';
+            sel.appendChild(opt);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('serviceSelect').addEventListener('change', function() {
+      const opt = this.options[this.selectedIndex];
+      if (opt.dataset.price) {
+        document.getElementById('selectedPrice').textContent = '¥' + parseFloat(opt.dataset.price).toFixed(2);
+        document.getElementById('mobileField').style.display = opt.dataset.requireMobile === '1' ? '' : 'none';
+        if (opt.dataset.requireMobile !== '1') document.getElementById('mobileInput').value = '';
+      } else {
+        document.getElementById('selectedPrice').textContent = '-';
+        document.getElementById('mobileField').style.display = 'none';
+      }
+    });
+
+    async function acquireNumber() {
+      const serviceId = document.getElementById('serviceSelect').value;
+      if (!serviceId) return toast('请选择服务项目', 'error');
+      const body = { serviceId: parseInt(serviceId) };
+      const mobile = document.getElementById('mobileInput').value.trim();
+      if (mobile) body.mobile = mobile;
+
+      try {
+        const res = await apiFetch('/api/services/acquire', { method: 'POST', body: JSON.stringify(body) });
+        const data = await res.json();
+        if (data.code === 0) {
+          toast('获取成功: ' + (data.data.fullPhone || data.data.phoneNumber), 'success');
+          refreshBalance();
+          loadOrders();
+        } else {
+          toast(data.msg, 'error');
+        }
+      } catch (e) { toast('网络错误', 'error'); }
+    }
+
+    async function fetchSmsForOrder(orderId) {
+      try {
+        const res = await apiFetch('/api/services/orders/' + orderId + '/sms');
+        const data = await res.json();
+        if (data.code === 0 && data.data.smsCode) {
+          loadOrders(); // Refresh entire table to show code
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    async function releaseOrder(orderId) {
+      if (!confirm('确定要释放这个手机号吗？')) return;
+      try {
+        const res = await apiFetch('/api/services/orders/' + orderId + '/release', { method: 'POST' });
+        const data = await res.json();
+        toast(data.msg, data.code === 0 ? 'success' : 'error');
+        loadOrders();
+      } catch (e) { toast('网络错误', 'error'); }
+    }
+
+    async function blacklistOrder(orderId) {
+      if (!confirm('确定要拉黑这个手机号吗？')) return;
+      try {
+        const res = await apiFetch('/api/services/orders/' + orderId + '/blacklist', { method: 'POST' });
+        const data = await res.json();
+        toast(data.msg, data.code === 0 ? 'success' : 'error');
+        loadOrders();
+      } catch (e) { toast('网络错误', 'error'); }
+    }
+
+    function startAutoPoll() {
+      stopAutoPoll();
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await apiFetch('/api/services/orders');
+          const data = await res.json();
+          if (data.code === 0) {
+            // Auto-fetch SMS for waiting orders
+            const waiting = data.data.orders.filter(o => o.status === 'waiting_sms');
+            for (const o of waiting) {
+              await fetchSmsForOrder(o.id);
+            }
+            if (waiting.length > 0) loadOrders(); // refresh once after all fetches
+          }
+        } catch (e) { /* ignore */ }
+      }, 8000);
+    }
+
+    function stopAutoPoll() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await apiFetch('/api/services/orders');
+        const data = await res.json();
+        if (data.code === 0 && data.data.orders.length > 0) {
+          const orders = data.data.orders;
+          document.getElementById('orderCount').textContent = '共 ' + orders.length + ' 条';
+          let html = '';
+          orders.forEach(o => {
+            const isActive = o.status === 'waiting_sms' || o.status === 'pending';
+            html += `<tr>
+              <td>${o.id}</td>
+              <td>${esc(o.service_name || '-')}</td>
+              <td><strong>${esc(o.phone_number || '-')}</strong></td>
+              <td class="sms-code-cell">${o.sms_code || (o.status === 'waiting_sms' ? '<span style="color:#aaa;font-size:12px;">等待中</span>' : '-')}</td>
+              <td class="sms-content-cell" title="${esc(o.sms_code || '')}">${o.status === 'completed' && o.sms_code ? esc(o.sms_code) : '-'}</td>
+              <td><span class="status status-${o.status}">${statusMap[o.status] || o.status}</span></td>
+              <td>¥${o.amount.toFixed(2)}</td>
+              <td style="font-size:12px;color:#999;">${o.created_at ? new Date(o.created_at).toLocaleString('zh-CN') : '-'}</td>
+              <td class="actions">${isActive ? `
+                <button class="btn btn-success btn-xs" onclick="fetchSmsForOrder(${o.id});setTimeout(loadOrders,1500)">取码</button>
+                <button class="btn btn-warning btn-xs" onclick="releaseOrder(${o.id})">释放</button>
+                <button class="btn btn-danger btn-xs" onclick="blacklistOrder(${o.id})">拉黑</button>
+              ` : '-'}</td>
+            </tr>`;
+          });
+          document.getElementById('orderTableBody').innerHTML = html;
+        } else {
+          document.getElementById('orderCount').textContent = '';
+          document.getElementById('orderTableBody').innerHTML = '<tr><td colspan="9" class="empty-state">暂无订单，请先获取手机号</td></tr>';
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function refreshBalance() {
+      try {
+        const res = await apiFetch('/api/auth/profile');
+        const data = await res.json();
+        if (data.code === 0) {
+          document.getElementById('balanceDisplay').textContent = (data.data.balance || 0).toFixed(2);
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          user.balance = data.data.balance;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+      } catch (e) {}
+    }
+
+    function esc(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = 'toast toast-' + type + ' show';
+      setTimeout(() => { el.className = 'toast'; }, 3000);
+    }
+
+    function logout() {
+      stopAutoPoll();
+      localStorage.removeItem('token'); localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+
+    init();
+  </script>
+</body>
+</html>

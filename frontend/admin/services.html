@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>服务管理 - SMSF</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; }
+    .sidebar { width: 220px; background: #2c3e50; color: #fff; padding: 20px 0; min-height: 100vh; position: fixed; top: 0; bottom: 0; }
+    .sidebar h3 { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 16px; }
+    .sidebar a { display: block; padding: 12px 20px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; transition: all 0.2s; border-left: 3px solid transparent; }
+    .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,0.08); border-left-color: #3498db; color: #fff; }
+    .main { flex: 1; padding: 24px; margin-left: 220px; }
+    .section { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 16px; }
+    .section h4 { margin-bottom: 16px; color: #333; font-size: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; color: #fff; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #3498db; }
+    .btn-success { background: #27ae60; }
+    .btn-danger { background: #e74c3c; }
+    .btn-warning { background: #f39c12; }
+    .btn-gray { background: #95a5a6; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; background: #fafafa; white-space: nowrap; }
+    td { padding: 10px 8px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    tr:hover td { background: #f8f9ff; }
+    .badge { padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+    .badge-active { background: #d4edda; color: #155724; }
+    .badge-inactive { background: #f8d7da; color: #721c24; }
+    .cell-desc { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 30px; max-width: 600px; width: 90vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+    .modal h4 { margin-bottom: 20px; font-size: 18px; color: #333; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-row.single { grid-template-columns: 1fr; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 13px; color: #555; margin-bottom: 4px; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea { padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #3498db; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-group .hint { font-size: 11px; color: #999; margin-top: 2px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
+    .toast { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast-success { background: #27ae60; }
+    .toast-error { background: #e74c3c; }
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3>SMSF 管理后台</h3>
+    <a href="/admin/dashboard">首页概览</a>
+    <a href="/admin/services" class="active">服务管理</a>
+    <a href="/admin/cards">卡密管理</a>
+    <a href="/admin/users">用户管理</a>
+    <a href="/admin/orders">订单管理</a>
+  </div>
+
+  <div class="main">
+    <h2 style="margin-bottom:20px;">服务管理</h2>
+
+    <div class="section">
+      <h4>服务列表 <button class="btn btn-primary" onclick="openAddModal()">+ 添加服务</button></h4>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>排序</th><th>服务名称</th><th>Firefox ID</th><th>售价</th><th>最大单价</th><th>国家/地区</th><th>运营商</th><th>指定号码</th><th>说明</th><th>超时(s)</th><th>状态</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="svcTableBody"><tr><td colspan="14" class="empty-state">加载中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="svcModal">
+    <div class="modal">
+      <h4 id="modalTitle">添加服务</h4>
+      <form id="svcForm" onsubmit="saveService(event)">
+        <input type="hidden" id="svcId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>服务名称 *</label>
+            <input id="svcName" placeholder="如: Google Voice" required>
+            <span class="hint">用户端显示的名称</span>
+          </div>
+          <div class="form-group">
+            <label>Firefox 项目ID *</label>
+            <input id="svcFoxId" placeholder="Firefox上游服务ID" required>
+            <span class="hint">对应Firefox平台的serviceId</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>售价 (元) *</label>
+            <input id="svcPrice" type="number" step="0.01" min="0" placeholder="如: 1.50" required>
+            <span class="hint">向用户收取的基础价格</span>
+          </div>
+          <div class="form-group">
+            <label>最大单价 (元)</label>
+            <input id="svcMaxPrice" type="number" step="0.01" min="0" placeholder="0=不限">
+            <span class="hint">最高允许单价，0表示不限制。当上游号码价格超过此值时拒绝获取</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>国家代码</label>
+            <input id="svcCountry" placeholder="如: usa、hkg、mys，留空则随机获取">
+            <span class="hint">Firefox取号时传入的国家代码，参考api.txt中国家代码表</span>
+          </div>
+          <div class="form-group">
+            <label>运营商</label>
+            <input id="svcOperator" placeholder="如: 移动、联通、any">
+            <span class="hint">号码运营商，不限则留空</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>状态</label>
+            <select id="svcStatus">
+              <option value="1">上架</option>
+              <option value="0">下架</option>
+            </select>
+            <span class="hint">下架后用户端不可见</span>
+          </div>
+          <div class="form-group">
+            <label>指定号码接码</label>
+            <select id="svcRequireMobile">
+              <option value="0">不限制</option>
+              <option value="1">开启（用户必须指定号码）</option>
+            </select>
+            <span class="hint">开启后用户取号时必须填写指定号码或号段</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>等待超时 (秒)</label>
+            <input id="svcTimeout" type="number" min="10" max="3600" value="300">
+            <span class="hint">超过此时间未收到短信则建议重试，默认300秒</span>
+          </div>
+          <div class="form-group">
+            <label>排序</label>
+            <input id="svcSortOrder" type="number" min="0" value="0" placeholder="数字越小越靠前">
+            <span class="hint">控制前端显示顺序，0排最前</span>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label>说明描述</label>
+            <textarea id="svcDesc" placeholder="服务说明，如：支持接收Google验证码，一般30秒内到达..."></textarea>
+            <span class="hint">用户选择服务时展示的提示信息</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-gray" onclick="closeModal()">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = '';
+    function getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }; }
+    function checkAdmin() { if (!localStorage.getItem('token')) { window.location.href = '/admin'; return false; } return true; }
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(API + path, { ...options, headers: { ...getHeaders(), ...(options.headers || {}) } });
+      if (res.status === 401) { localStorage.clear(); window.location.href = '/admin'; throw new Error('Unauthorized'); }
+      return res;
+    }
+
+    async function loadServices() {
+      if (!checkAdmin()) return;
+      const res = await apiFetch('/api/admin/services');
+      const data = await res.json();
+      if (data.code === 0) {
+        if (data.data.length === 0) {
+          document.getElementById('svcTableBody').innerHTML = '<tr><td colspan="14" class="empty-state">暂无服务，点击上方按钮添加</td></tr>';
+          return;
+        }
+        let html = '';
+        data.data.forEach(s => {
+          html += `<tr>
+            <td>${s.id}</td>
+            <td>${s.sort_order || 0}</td>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td style="font-family:monospace;">${esc(s.firefox_service_id)}</td>
+            <td style="color:#e74c3c;font-weight:500;">¥${s.price.toFixed(2)}</td>
+            <td>${s.maxPrice && s.maxPrice > 0 ? '¥' + s.maxPrice.toFixed(2) : '<span style="color:#999;">不限</span>'}</td>
+            <td>${s.country ? '<code style="font-size:12px;">'+esc(s.country)+'</code>' : '<span style="color:#999;">不限</span>'}</td>
+            <td>${esc(s.operator) || '-'}</td>
+            <td>${s.require_mobile ? '<span style="color:#e74c3c;font-size:12px;">需指定</span>' : '<span style="color:#999;">不限</span>'}</td>
+            <td class="cell-desc" title="${esc(s.description || '')}">${esc(s.description) || '-'}</td>
+            <td>${s.timeout || 300}</td>
+            <td><span class="badge ${s.status === 1 ? 'badge-active' : 'badge-inactive'}">${s.status === 1 ? '上架' : '下架'}</span></td>
+            <td style="font-size:12px;color:#999;">${s.created_at}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn btn-warning btn-sm" onclick="openEditModal(${s.id})">编辑</button>
+              <button class="btn btn-sm ${s.status === 1 ? 'btn-gray' : 'btn-success'}" onclick="toggleService(${s.id}, ${s.status === 1 ? 0 : 1})">${s.status === 1 ? '下架' : '上架'}</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteService(${s.id}, '${esc(s.name)}')">删除</button>
+            </td>
+          </tr>`;
+        });
+        document.getElementById('svcTableBody').innerHTML = html;
+      }
+    }
+
+    function esc(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function openAddModal() {
+      document.getElementById('modalTitle').textContent = '添加服务';
+      document.getElementById('svcId').value = '';
+      document.getElementById('svcName').value = '';
+      document.getElementById('svcFoxId').value = '';
+      document.getElementById('svcPrice').value = '';
+      document.getElementById('svcMaxPrice').value = '0';
+      document.getElementById('svcCountry').value = '';
+      document.getElementById('svcOperator').value = '';
+      document.getElementById('svcDesc').value = '';
+      document.getElementById('svcTimeout').value = '300';
+      document.getElementById('svcSortOrder').value = '0';
+      document.getElementById('svcStatus').value = '1';
+      document.getElementById('svcRequireMobile').value = '0';
+      document.getElementById('svcModal').classList.add('active');
+    }
+
+    async function openEditModal(id) {
+      const res = await apiFetch('/api/admin/services');
+      const data = await res.json();
+      const svc = data.data.find(s => s.id === id);
+      if (!svc) return toast('服务不存在', 'error');
+
+      document.getElementById('modalTitle').textContent = '编辑服务 #' + id;
+      document.getElementById('svcId').value = svc.id;
+      document.getElementById('svcName').value = svc.name;
+      document.getElementById('svcFoxId').value = svc.firefox_service_id;
+      document.getElementById('svcPrice').value = svc.price;
+      document.getElementById('svcMaxPrice').value = svc.maxPrice || 0;
+      document.getElementById('svcCountry').value = svc.country || '';
+      document.getElementById('svcOperator').value = svc.operator || '';
+      document.getElementById('svcDesc').value = svc.description || '';
+      document.getElementById('svcTimeout').value = svc.timeout || 300;
+      document.getElementById('svcSortOrder').value = svc.sort_order || 0;
+      document.getElementById('svcStatus').value = svc.status;
+      document.getElementById('svcRequireMobile').value = svc.require_mobile || 0;
+      document.getElementById('svcModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('svcModal').classList.remove('active');
+    }
+
+    async function saveService(e) {
+      e.preventDefault();
+      const id = document.getElementById('svcId').value;
+      const body = {
+        name: document.getElementById('svcName').value.trim(),
+        firefoxServiceId: document.getElementById('svcFoxId').value.trim(),
+        price: parseFloat(document.getElementById('svcPrice').value),
+        maxPrice: parseFloat(document.getElementById('svcMaxPrice').value) || 0,
+        country: document.getElementById('svcCountry').value.trim(),
+        operator: document.getElementById('svcOperator').value.trim(),
+        description: document.getElementById('svcDesc').value.trim(),
+        timeout: parseInt(document.getElementById('svcTimeout').value) || 300,
+        sortOrder: parseInt(document.getElementById('svcSortOrder').value) || 0,
+        requireMobile: parseInt(document.getElementById('svcRequireMobile').value) || 0,
+        status: parseInt(document.getElementById('svcStatus').value)
+      };
+
+      if (!body.name || !body.firefoxServiceId || isNaN(body.price) || body.price < 0) {
+        return toast('请填写服务名称、Firefox项目ID和有效价格', 'error');
+      }
+
+      const method = id ? 'PUT' : 'POST';
+      if (id) body.id = parseInt(id);
+
+      const res = await apiFetch('/api/admin/services', {
+        method, body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      toast(data.msg, data.code === 0 ? 'success' : 'error');
+      if (data.code === 0) { closeModal(); loadServices(); }
+    }
+
+    async function toggleService(id, status) {
+      const res = await apiFetch('/api/admin/services/status', {
+        method: 'POST', body: JSON.stringify({ id, status })
+      });
+      const data = await res.json();
+      toast(data.msg, data.code === 0 ? 'success' : 'error');
+      if (data.code === 0) loadServices();
+    }
+
+    async function deleteService(id, name) {
+      if (!confirm(`确定要删除服务「${name}」吗？\n\n此操作不可恢复，已有订单记录不受影响。`)) return;
+      const res = await apiFetch('/api/admin/services', {
+        method: 'DELETE', body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      toast(data.msg, data.code === 0 ? 'success' : 'error');
+      if (data.code === 0) loadServices();
+    }
+
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = 'toast toast-' + type + ' show';
+      setTimeout(() => { el.className = 'toast'; }, 3000);
+    }
+
+    // Close modal on overlay click
+    document.getElementById('svcModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    loadServices();
+  </script>
+</body>
+</html>
