@@ -49,6 +49,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ code: 500, msg: '服务器内部错误' });
 });
 
+const Order = require('./models/Order');
+
+const AUTO_CLEANUP_DAYS = parseInt(process.env.AUTO_CLEANUP_DAYS, 10) || 7;
+const AUTO_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+if (AUTO_CLEANUP_DAYS > 0) {
+  setInterval(() => {
+    try {
+      const deleted = Order.deleteOldOrders(AUTO_CLEANUP_DAYS);
+      if (deleted > 0) {
+        console.log(`[AutoCleanup] Deleted ${deleted} old orders (older than ${AUTO_CLEANUP_DAYS} days)`);
+      }
+    } catch (e) {
+      console.error('[AutoCleanup] Error:', e.message);
+    }
+  }, AUTO_CLEANUP_INTERVAL);
+  console.log(`Auto-cleanup enabled: deleting terminal orders older than ${AUTO_CLEANUP_DAYS} days (checked hourly)`);
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`SMSF Proxy Server running at http://localhost:${PORT}`);

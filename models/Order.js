@@ -52,6 +52,16 @@ const Order = {
 
   getActiveOrdersCount(userId) {
     return db.prepare("SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND status IN ('pending', 'waiting_sms')").get(userId).count;
+  },
+
+  deleteByUser(userId) {
+    const result = db.prepare("DELETE FROM orders WHERE user_id = ? AND status IN ('completed', 'released', 'blacklisted', 'failed', 'cancelled')").run(userId);
+    return result.changes;
+  },
+
+  deleteOldOrders(days) {
+    const result = db.prepare("DELETE FROM orders WHERE status IN ('completed', 'released', 'blacklisted', 'failed', 'cancelled') AND created_at < datetime('now', '-' || ? || ' days')").run(days);
+    return result.changes;
   }
 };
 

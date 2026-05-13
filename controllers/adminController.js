@@ -52,7 +52,7 @@ exports.createService = (req, res) => {
     if (!name || !firefoxServiceId || !price) return res.json({ code: 400, msg: '请填写服务名称、Firefox项目ID和价格' });
     const id = Service.create({
       name, firefoxServiceId, price: parseFloat(price), maxPrice: parseFloat(maxPrice) || 0,
-      country, operator, description, requireMobile: requireMobile ? 1 : 0, timeout: parseInt(timeout) || 300, sortOrder: parseInt(sortOrder) || 0
+      country, operator, description, requireMobile: [0, 1, 2].includes(parseInt(requireMobile)) ? parseInt(requireMobile) : 0, timeout: parseInt(timeout) || 300, sortOrder: parseInt(sortOrder) || 0
     });
     res.json({ code: 0, msg: '添加成功', data: { id } });
   } catch (e) {
@@ -67,7 +67,7 @@ exports.updateService = (req, res) => {
     Service.update(id, {
       name, firefoxServiceId, price: parseFloat(price), maxPrice: parseFloat(maxPrice) || 0,
       country: country || '', operator: operator || '', description: description || '',
-      requireMobile: requireMobile ? 1 : 0, timeout: parseInt(timeout) || 300, sortOrder: parseInt(sortOrder) || 0,
+      requireMobile: [0, 1, 2].includes(parseInt(requireMobile)) ? parseInt(requireMobile) : 0, timeout: parseInt(timeout) || 300, sortOrder: parseInt(sortOrder) || 0,
       status: status !== undefined ? status : 1
     });
     res.json({ code: 0, msg: '更新成功' });

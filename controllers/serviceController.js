@@ -23,8 +23,8 @@ exports.acquireNumber = async (req, res) => {
     const user = User.findById(req.user.id);
     if (user.balance < service.price) return res.json({ code: 400, msg: `余额不足，需要 ¥${service.price}，当前余额 ¥${user.balance.toFixed(2)}` });
 
-    // Check if service requires mobile before deduction
-    if (service.require_mobile && !mobile) {
+    // Check if service requires mobile before deduction (1=required, 2=optional)
+    if (service.require_mobile === 1 && !mobile) {
       return res.json({ code: 400, msg: '该服务需要指定号码或号段才能取号' });
     }
 
@@ -169,6 +169,15 @@ exports.blacklistNumber = async (req, res) => {
     }
     Order.updateStatus(orderId, 'blacklisted');
     res.json({ code: 0, msg: '已拉黑手机号' });
+  } catch (e) {
+    res.json({ code: 500, msg: '服务器错误: ' + e.message });
+  }
+};
+
+exports.clearHistory = (req, res) => {
+  try {
+    const count = Order.deleteByUser(req.user.id);
+    res.json({ code: 0, msg: `已清除 ${count} 条历史记录`, data: { deleted: count } });
   } catch (e) {
     res.json({ code: 500, msg: '服务器错误: ' + e.message });
   }

@@ -31,8 +31,9 @@
     .btn-xs { padding: 2px 6px; font-size: 10px; }
 
     .order-panel { margin: 0 16px 16px; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .order-panel h3 { font-size: 16px; margin-bottom: 14px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; display: flex; justify-content: space-between; }
+    .order-panel h3 { font-size: 16px; margin-bottom: 14px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .order-panel h3 span { font-size: 13px; color: #888; font-weight: normal; }
+    .btn-clear { background: #e74c3c; padding: 5px 12px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { text-align: left; padding: 10px 6px; border-bottom: 2px solid #eee; color: #666; font-weight: 600; background: #fafafa; white-space: nowrap; }
     td { padding: 8px 6px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
@@ -77,8 +78,8 @@
         </select>
       </div>
       <div class="field" id="mobileField" style="display:none;">
-        <label>指定号码 <span style="color:#e74c3c;">*</span></label>
-        <input id="mobileInput" placeholder="号段或完整号码" style="width:150px;">
+        <label>指定号码 <span id="mobileRequired" style="color:#e74c3c;display:none;">*</span></label>
+        <input id="mobileInput" placeholder="号段或完整号码（选填）" style="width:150px;">
       </div>
       <div class="field">
         <label>费用</label>
@@ -89,7 +90,7 @@
   </div>
 
   <div class="order-panel">
-    <h3>订单记录 <span id="orderCount"></span></h3>
+    <h3>订单记录 <span id="orderCount"></span><button class="btn btn-clear" onclick="clearHistory()">清除历史记录</button></h3>
     <div style="overflow-x:auto;">
       <table>
         <thead>
@@ -162,8 +163,16 @@
       const opt = this.options[this.selectedIndex];
       if (opt.dataset.price) {
         document.getElementById('selectedPrice').textContent = '¥' + parseFloat(opt.dataset.price).toFixed(2);
-        document.getElementById('mobileField').style.display = opt.dataset.requireMobile === '1' ? '' : 'none';
-        if (opt.dataset.requireMobile !== '1') document.getElementById('mobileInput').value = '';
+        const requireMobile = parseInt(opt.dataset.requireMobile) || 0;
+        // 0=disabled, 1=required, 2=optional
+        if (requireMobile >= 1) {
+          document.getElementById('mobileField').style.display = '';
+          document.getElementById('mobileRequired').style.display = requireMobile === 1 ? '' : 'none';
+          document.getElementById('mobileInput').placeholder = requireMobile === 1 ? '号段或完整号码' : '号段或完整号码（选填）';
+        } else {
+          document.getElementById('mobileField').style.display = 'none';
+          document.getElementById('mobileInput').value = '';
+        }
       } else {
         document.getElementById('selectedPrice').textContent = '-';
         document.getElementById('mobileField').style.display = 'none';
@@ -214,6 +223,16 @@
       if (!confirm('确定要拉黑这个手机号吗？')) return;
       try {
         const res = await apiFetch('/api/services/orders/' + orderId + '/blacklist', { method: 'POST' });
+        const data = await res.json();
+        toast(data.msg, data.code === 0 ? 'success' : 'error');
+        loadOrders();
+      } catch (e) { toast('网络错误', 'error'); }
+    }
+
+    async function clearHistory() {
+      if (!confirm('确定要清除所有订单历史记录吗？此操作不可恢复！\n\n注意：正在进行中的订单（待获取、等待验证码）不会被清除。')) return;
+      try {
+        const res = await apiFetch('/api/services/orders', { method: 'DELETE' });
         const data = await res.json();
         toast(data.msg, data.code === 0 ? 'success' : 'error');
         loadOrders();

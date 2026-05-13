@@ -134,10 +134,11 @@
           <div class="form-group">
             <label>指定号码接码</label>
             <select id="svcRequireMobile">
-              <option value="0">不限制</option>
-              <option value="1">开启（用户必须指定号码）</option>
+              <option value="0">禁用（不显示指定号码输入框）</option>
+              <option value="1">必填（用户必须指定号码）</option>
+              <option value="2">可选（用户可指定号码，非必填）</option>
             </select>
-            <span class="hint">开启后用户取号时必须填写指定号码或号段</span>
+            <span class="hint">控制用户端是否显示及是否必填指定号码输入框</span>
           </div>
         </div>
         <div class="form-row">
@@ -199,7 +200,7 @@
             <td>${s.maxPrice && s.maxPrice > 0 ? '¥' + s.maxPrice.toFixed(2) : '<span style="color:#999;">不限</span>'}</td>
             <td>${s.country ? '<code style="font-size:12px;">'+esc(s.country)+'</code>' : '<span style="color:#999;">不限</span>'}</td>
             <td>${esc(s.operator) || '-'}</td>
-            <td>${s.require_mobile ? '<span style="color:#e74c3c;font-size:12px;">需指定</span>' : '<span style="color:#999;">不限</span>'}</td>
+            <td>${s.require_mobile === 1 ? '<span style="color:#e74c3c;font-size:12px;">必填</span>' : s.require_mobile === 2 ? '<span style="color:#f39c12;font-size:12px;">可选</span>' : '<span style="color:#999;">禁用</span>'}</td>
             <td class="cell-desc" title="${esc(s.description || '')}">${esc(s.description) || '-'}</td>
             <td>${s.timeout || 300}</td>
             <td><span class="badge ${s.status === 1 ? 'badge-active' : 'badge-inactive'}">${s.status === 1 ? '上架' : '下架'}</span></td>
